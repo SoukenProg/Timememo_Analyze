@@ -12,6 +12,8 @@ import itertools
 import os
 
 plt.rcParams['font.family'] = "MS Gothic"
+plt.rcParams["font.size"] = 20
+plt.tight_layout()
 
 timeList = ["起床","夕食","入浴","寝る準備","就寝"] #時刻データの列名
 pd.set_option('display.max_columns', 10)
@@ -115,6 +117,7 @@ if __name__ == "__main__":
         y = df[elm[1]]
         # プロット
         print(x)
+        ax.set_title(f"生活リズムの関係_{elm[0]}と{elm[1]}")
         ax.scatter(x, y)
         ax.set_xlabel(elm[0])
         ax.set_ylabel(elm[1])
