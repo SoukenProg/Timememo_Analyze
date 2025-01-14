@@ -33,8 +33,11 @@ def timedelta_to_string(td_str):
         minutes = td_str / timedelta(minutes=1)
         seconds = td_str / timedelta(seconds=1)
         milliseconds = td_str / timedelta(milliseconds=1)
-
-        res = f"{int(hours):02}:{int(minutes % 60):02}:{int(seconds % 60):02}.{int(milliseconds % 1000):04}"
+        res = None
+        if(hours >= 0):
+            res = f"{int(hours):02}:{int(minutes % 60):02}:{int(seconds % 60):02}.{int(milliseconds % 1000):04}"
+        else:
+            res = f"{int(hours):03}:{int(minutes % 60):02}:{int(seconds % 60):02}.{int(milliseconds % 1000):04}"
         # print(res)
         return res
 
@@ -68,6 +71,41 @@ def format_timedelta_as_hhmm(x, _):
     hours = int(total_seconds // 3600)
     minutes = int((total_seconds % 3600) // 60)
     return f"{hours:02}:{minutes:02}"  # hh:mm形式
+
+def analyze(elms,df,title=""):
+    fig, ax = plt.subplots(figsize=(20, 10))
+    df.plot(ax=ax,x="日付")
+    ax.set_title("生活リズム")
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
+    plt.show()
+    exit(0)
+    fig.savefig(f"pics/{time_now}/全体図_{title}.png")
+    ax.cla()
+    for elm in elms:
+
+        print(elm)
+        filename = f"{elm[0]}_{elm[1]}.png"
+        x = df[elm[0]]
+        y = df[elm[1]]
+        res = x.corr(y)
+        print(res)
+        # プロット
+        # print(x)
+        ax.set_title(f"生活リズムの関係_{elm[0]}と{elm[1]}")
+        ax.scatter(x, y)
+        ax.text(0.05, 0.9,f"相関係数={res:.2f}", ha="left", va="top", transform=ax.transAxes)
+        ax.set_xlabel(elm[0])
+        ax.set_ylabel(elm[1])
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
+        plt.show()
+        # 保存
+        os.makedirs(f"pics/{time_now}", exist_ok=True)
+        fig.savefig(f"pics/{time_now}/{filename}")
+        # プロットを消去
+        ax.cla()
+    plt.close(fig)
+
 
 if __name__ == "__main__":
     # 識別用に今の時間を取得
@@ -107,7 +145,7 @@ if __name__ == "__main__":
     # print(describe_df.dtypes)
     addelms = itertools.combinations(timeList[1:], 2) #二つの組み合わせとして列挙
     # データ群を追加
-    moredata_df = pd.DataFrame()
+    moredata_df = df.loc[:,"日付"]
     for elm in addelms:
         print(elm)
         title = f"{elm[0]}から{elm[1]}"
@@ -115,37 +153,12 @@ if __name__ == "__main__":
         data = df.loc[:,elm[1]] - df.loc[:,elm[0]]
         adddata_df = pd.DataFrame(data=data,columns=[title])
         moredata_df = pd.concat([moredata_df,adddata_df],axis=1)
-        print(moredata_df)
-    exit(0)
 
 
-
+    analyze_origin_df = df.drop(columns="用事")
+    # print(moredata_df)
     # ここから解析
     elms = itertools.combinations(timeList, 2) #二つの組み合わせとして列挙
-    fig, ax = plt.subplots(figsize=(10, 10))
-    for elm in elms:
-
-        print(elm)
-        filename = f"{elm[0]}_{elm[1]}.png"
-        x = df[elm[0]]
-        y = df[elm[1]]
-        res = x.corr(y)
-        print(res)
-        # プロット
-        # print(x)
-        ax.set_title(f"生活リズムの関係_{elm[0]}と{elm[1]}")
-        ax.scatter(x, y)
-        ax.text(0.05, 0.9,f"相関係数={res:.2f}", ha="left", va="top", transform=ax.transAxes)
-        ax.set_xlabel(elm[0])
-        ax.set_ylabel(elm[1])
-        ax.xaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
-        ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
-        plt.show()
-        # 保存
-        os.makedirs(f"pics/{time_now}", exist_ok=True)
-        fig.savefig(f"pics/{time_now}/{filename}")
-        # プロットを消去
-        ax.cla()
-
-
-    plt.close(fig)
+    analyze(elms,df=analyze_origin_df,title="元データ")
+    elms_more = itertools.combinations(timeList_added,2)
+    analyze(elms_more,df=moredata_df,title="追加データ")
