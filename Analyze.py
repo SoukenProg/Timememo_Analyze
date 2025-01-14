@@ -110,9 +110,10 @@ if __name__ == "__main__":
     moredata_df = pd.DataFrame()
     for elm in addelms:
         print(elm)
-        title = [f"{elm[0]}から{elm[1]}"]
+        title = f"{elm[0]}から{elm[1]}"
+        timeList_added.append(title)
         data = df.loc[:,elm[1]] - df.loc[:,elm[0]]
-        adddata_df = pd.DataFrame(data=data,columns=title)
+        adddata_df = pd.DataFrame(data=data,columns=[title])
         moredata_df = pd.concat([moredata_df,adddata_df],axis=1)
         print(moredata_df)
     exit(0)
