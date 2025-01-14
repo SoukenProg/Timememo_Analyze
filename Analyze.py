@@ -16,6 +16,7 @@ plt.rcParams["font.size"] = 20
 plt.tight_layout()
 
 timeList = ["起床","夕食","入浴","寝る準備","就寝"] #時刻データの列名
+timeList_added = []#追加する時刻データの列名
 pd.set_option('display.max_columns', 10)
 def convert_to_timedelta(time_str):
     hours, minutes = map(int, time_str.split(":"))
@@ -104,6 +105,18 @@ if __name__ == "__main__":
     print("Describe_DF")
     print(describe_df)
     # print(describe_df.dtypes)
+    addelms = itertools.combinations(timeList[1:], 2) #二つの組み合わせとして列挙
+    # データ群を追加
+    moredata_df = pd.DataFrame()
+    for elm in addelms:
+        print(elm)
+        title = [f"{elm[0]}から{elm[1]}"]
+        data = df.loc[:,elm[1]] - df.loc[:,elm[0]]
+        adddata_df = pd.DataFrame(data=data,columns=title)
+        moredata_df = pd.concat([moredata_df,adddata_df],axis=1)
+        print(moredata_df)
+    exit(0)
+
 
 
     # ここから解析
@@ -115,15 +128,18 @@ if __name__ == "__main__":
         filename = f"{elm[0]}_{elm[1]}.png"
         x = df[elm[0]]
         y = df[elm[1]]
+        res = x.corr(y)
+        print(res)
         # プロット
-        print(x)
+        # print(x)
         ax.set_title(f"生活リズムの関係_{elm[0]}と{elm[1]}")
         ax.scatter(x, y)
+        ax.text(0.05, 0.9,f"相関係数={res:.2f}", ha="left", va="top", transform=ax.transAxes)
         ax.set_xlabel(elm[0])
         ax.set_ylabel(elm[1])
         ax.xaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
         ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
-        # plt.show()
+        plt.show()
         # 保存
         os.makedirs(f"pics/{time_now}", exist_ok=True)
         fig.savefig(f"pics/{time_now}/{filename}")
