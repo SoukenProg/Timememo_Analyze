@@ -75,12 +75,13 @@ def format_timedelta_as_hhmm(x, _):
 def analyze(elms,df,title=""):
     fig, ax = plt.subplots(figsize=(20, 10))
     df.plot(ax=ax,x="日付")
-    ax.set_title("生活リズム")
+    ax.set_title(f"生活リズム_{title}")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
-    plt.show()
-    exit(0)
-    fig.savefig(f"pics/{time_now}/全体図_{title}.png")
-    ax.cla()
+    os.makedirs(f"pics/{time_now}", exist_ok=True)
+    os.makedirs(f"pics/{time_now}/全体図", exist_ok=True)
+    fig.savefig(f"pics/{time_now}/全体図/{title}.png")
+    plt.close(fig)
+    fig, ax = plt.subplots(figsize=(12, 12))
     for elm in elms:
 
         print(elm)
@@ -88,7 +89,7 @@ def analyze(elms,df,title=""):
         x = df[elm[0]]
         y = df[elm[1]]
         res = x.corr(y)
-        print(res)
+        # print(res)
         # プロット
         # print(x)
         ax.set_title(f"生活リズムの関係_{elm[0]}と{elm[1]}")
@@ -98,14 +99,38 @@ def analyze(elms,df,title=""):
         ax.set_ylabel(elm[1])
         ax.xaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
         ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
-        plt.show()
+        # plt.show()
         # 保存
-        os.makedirs(f"pics/{time_now}", exist_ok=True)
         fig.savefig(f"pics/{time_now}/{filename}")
         # プロットを消去
         ax.cla()
     plt.close(fig)
 
+def analyze_rolling(df,days,title):
+    fig, ax = plt.subplots(figsize=(20, 10))
+    rolling_df = df.loc[:,"日付"]
+    # print(df)
+    df = df.iloc[:,1:]
+    for col in df.columns:
+        tmp_df = df[col]
+        # 秒単位で数値リストに変換
+        data_in_seconds = tmp_df.apply(lambda td: td.total_seconds())
+
+        # Rolling 計算を適用
+        tmp_df = data_in_seconds.rolling(window=days, min_periods=1).mean()
+        # ナノ秒単位を timedelta に変換
+        tmp_df = tmp_df.apply(lambda x: timedelta(seconds=x))  # timedelta を秒から生成
+        # print(tmp_df)
+        # exit(0)
+        rolling_df = pd.concat([rolling_df,tmp_df],axis=1)
+    # プロット
+    rolling_df.plot(ax=ax,x="日付")
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
+    # print(rolling_df)
+    ax.set_title(f"生活リズム(移動平均{days}日)_{title}")
+    # plt.show()
+    fig.savefig(f"pics/{time_now}/全体図/移動平均{days}_{title}.png")
+    plt.close(fig)
 
 if __name__ == "__main__":
     # 識別用に今の時間を取得
@@ -155,10 +180,15 @@ if __name__ == "__main__":
         moredata_df = pd.concat([moredata_df,adddata_df],axis=1)
 
 
-    analyze_origin_df = df.drop(columns="用事")
+    analyze_origin_df = df.drop(columns=["用事","起きっぷり"])
     # print(moredata_df)
     # ここから解析
     elms = itertools.combinations(timeList, 2) #二つの組み合わせとして列挙
-    analyze(elms,df=analyze_origin_df,title="元データ")
     elms_more = itertools.combinations(timeList_added,2)
+
+    analyze(elms,df=analyze_origin_df,title="元データ")
     analyze(elms_more,df=moredata_df,title="追加データ")
+    for day in range(2,15):
+        analyze_rolling(analyze_origin_df,days=day,title="元データ")
+        analyze_rolling(moredata_df, days=day,title="追加データ")
+
