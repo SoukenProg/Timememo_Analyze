@@ -17,7 +17,9 @@ plt.tight_layout()
 
 timeList = ["起床","夕食","入浴","寝る準備","就寝"] #時刻データの列名
 timeList_added = []#追加する時刻データの列名
+wakeup_value = ["A","B","C","D","E"] # おきっぷし評価
 pd.set_option('display.max_columns', 10)
+df_common = None
 def convert_to_timedelta(time_str):
     hours, minutes = map(int, time_str.split(":"))
     return timedelta(hours=hours, minutes=minutes)
@@ -79,16 +81,18 @@ def analyze(elms,df,title=""):
     ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
     os.makedirs(f"pics/{time_now}", exist_ok=True)
     os.makedirs(f"pics/{time_now}/全体図", exist_ok=True)
+    os.makedirs(f"pics/{time_now}/詳細", exist_ok=True)
     fig.savefig(f"pics/{time_now}/全体図/{title}.png")
     plt.close(fig)
     fig, ax = plt.subplots(figsize=(12, 12))
     for elm in elms:
 
         print(elm)
-        filename = f"{elm[0]}_{elm[1]}.png"
+        filename = f"{elm[0]}_{elm[1]}"
         x = df[elm[0]]
         y = df[elm[1]]
         res = x.corr(y)
+        yf = np.polyfit(x, y, 1)
         # print(res)
         # プロット
         # print(x)
@@ -101,8 +105,27 @@ def analyze(elms,df,title=""):
         ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
         # plt.show()
         # 保存
-        fig.savefig(f"pics/{time_now}/{filename}")
+        fig.savefig(f"pics/{time_now}/{filename}.png")
         # プロットを消去
+        ax.cla()
+
+        for wv in wakeup_value:
+            df_targ = df_common[df_common["起きっぷり"]==wv]
+            df_targ = df[df["日付"].isin(df_targ["日付"])]
+            print(df_targ)
+            x = df_targ[elm[0]]
+            y = df_targ[elm[1]]
+            res = x.corr(y)
+            ax.scatter(x, y,label=f"起きっぷり:{wv}:相関係数={res:.2f}")
+        plt.legend()
+        ax.set_xlabel(elm[0])
+        ax.set_ylabel(elm[1])
+        ax.xaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
+        ax.set_title(f"生活リズムの関係(起きっぷり別)_{elm[0]}と{elm[1]}")
+        # 保存と消去
+        # plt.show()
+        fig.savefig(f"pics/{time_now}/詳細/{filename}_detail.png")
         ax.cla()
     plt.close(fig)
 
@@ -139,7 +162,9 @@ if __name__ == "__main__":
     path = "./Timememo.xlsx"
     df = pd.read_excel(path, header=0)
     # print(df)
+
     df = df.dropna(how="any")
+    df_common = df.iloc[:,:3]
     columns_as_lists = {col: df[col].tolist() for col in df.columns}
     # print(df)
     # print(df.dtypes)
