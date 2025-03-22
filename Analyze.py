@@ -4,6 +4,8 @@ from pydoc import describe
 
 import matplotlib.pyplot as plt
 from matplotlib import dates as mdates
+import scipy.optimize as optimize
+import sklearn.metrics as metrics
 import numpy as np
 import pandas as pd
 from datetime import timedelta
@@ -20,6 +22,10 @@ timeList_added = []#追加する時刻データの列名
 wakeup_value = ["A","B","C","D","E"] # おきっぷし評価
 pd.set_option('display.max_columns', 10)
 df_common = None
+
+def func_1d(x, a, b):
+    return a * x + b
+
 def convert_to_timedelta(time_str):
     hours, minutes = map(int, time_str.split(":"))
     return timedelta(hours=hours, minutes=minutes)
@@ -74,6 +80,14 @@ def format_timedelta_as_hhmm(x, _):
     minutes = int((total_seconds % 3600) // 60)
     return f"{hours:02}:{minutes:02}"  # hh:mm形式
 
+def calc_score(x,y):
+    x_sec = x.apply(lambda td: td.total_seconds() if isinstance(td, pd.Timedelta) else td)
+    y_sec = y.apply(lambda td: td.total_seconds() if isinstance(td, pd.Timedelta) else td)
+    popt, _ = optimize.curve_fit(func_1d, x_sec, y_sec)
+    r2 = metrics.r2_score(y_sec, func_1d(x_sec, *popt))
+
+    return popt,r2
+
 def analyze(elms,df,title=""):
     fig, ax = plt.subplots(figsize=(20, 10))
     df.plot(ax=ax,x="日付")
@@ -91,14 +105,16 @@ def analyze(elms,df,title=""):
         filename = f"{elm[0]}_{elm[1]}"
         x = df[elm[0]]
         y = df[elm[1]]
+        # print(x)
+        # 近似式の分析
+        popt,r2 = calc_score(x,y)
         res = x.corr(y)
-        yf = np.polyfit(x, y, 1)
-        # print(res)
+        # print(res,popt,r2)
         # プロット
         # print(x)
         ax.set_title(f"生活リズムの関係_{elm[0]}と{elm[1]}")
         ax.scatter(x, y)
-        ax.text(0.05, 0.9,f"相関係数={res:.2f}", ha="left", va="top", transform=ax.transAxes)
+        ax.text(0.05, 0.9,f"corr={res:.2f},y={popt[0]:.3f}x+{popt[1]:.3f},R2={r2:.3f}", ha="left", va="top", transform=ax.transAxes)
         ax.set_xlabel(elm[0])
         ax.set_ylabel(elm[1])
         ax.xaxis.set_major_formatter(plt.FuncFormatter(format_timedelta_as_hhmm))
@@ -112,11 +128,12 @@ def analyze(elms,df,title=""):
         for wv in wakeup_value:
             df_targ = df_common[df_common["起きっぷり"]==wv]
             df_targ = df[df["日付"].isin(df_targ["日付"])]
-            print(df_targ)
+            # print(df_targ)
             x = df_targ[elm[0]]
             y = df_targ[elm[1]]
+            popt,r2 = calc_score(x,y)
             res = x.corr(y)
-            ax.scatter(x, y,label=f"起きっぷり:{wv}:相関係数={res:.2f}")
+            ax.scatter(x, y,label=f"起きっぷり:{wv}:corr={res:.2f},y={popt[0]:.3f}x+{popt[1]:.3f},R2={r2:.3f}")
         plt.legend()
         ax.set_xlabel(elm[0])
         ax.set_ylabel(elm[1])
@@ -179,8 +196,8 @@ if __name__ == "__main__":
         df_Show[tL] = df_Show[tL].apply(lambda x: pd.to_timedelta(x) if isinstance(x, str) else x)
         df_Show[tL] = df_Show[tL].apply(lambda x: timedelta_to_string(x))
 
-    # print("DF_Show")
-    # print(df_Show)
+    print("DF_Show")
+    print(df_Show)
     # print(df_Show.dtypes)
 
     # Describeの結果をタイムデータに変換して表示
