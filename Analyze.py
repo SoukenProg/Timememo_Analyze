@@ -179,11 +179,12 @@ if __name__ == "__main__":
     path = "./Timememo.xlsx"
     df = pd.read_excel(path, header=0)
     # print(df)
-
+    # いらないのは消す
+    df = df.drop(df.columns[8:], axis=1)
     df = df.dropna(how="any")
     df_common = df.iloc[:,:3]
     columns_as_lists = {col: df[col].tolist() for col in df.columns}
-    # print(df)
+    print(df)
     # print(df.dtypes)
 
     # 日時を変換
